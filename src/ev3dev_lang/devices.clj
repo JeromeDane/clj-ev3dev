@@ -190,5 +190,7 @@
   the brick) so it always returns the same mapping.
 
   Led types: :green-left, :green-right, :red-left, :red-right."
-  [led-type]
-  {:device-type led-type :node (get type-resolver led-type)})
+  ([led-type]
+   {:device-type led-type :node (get type-resolver led-type)})
+  ([led-type config]
+   (assoc (find-led led-type) :config config)))
