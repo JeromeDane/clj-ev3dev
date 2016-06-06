@@ -14,10 +14,10 @@
 (def type-resolver {:touch       "lego-ev3-touch"
                     :color       "lego-ev3-color"
                     :infrared    "lego-ev3-ir"
-                    :green-left  "ev3-left1:green:ev3dev"
-                    :green-right "ev3-right1:green:ev3dev"
-                    :red-left    "ev3-left0:red:ev3dev"
-                    :red-right   "ev3-right0:red:ev3dev"})
+                    :green-left  "ev3:left:green:ev3dev"
+                    :green-right "ev3:right:green:ev3dev"
+                    :red-left    "ev3:left:red:ev3dev"
+                    :red-right   "ev3:right:red:ev3dev"})
 
 (def default-ports {:touch    "in1"
                     :color    "in3"
