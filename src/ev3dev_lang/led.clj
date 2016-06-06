@@ -1,17 +1,20 @@
 (ns ev3dev-lang.led
   (:require [ev3dev-lang.devices :as devices]))
 
-(defn max-intensity
+(defn max-brightness
   "Reads maximum brightness of the led.
   Led passed has to be the result of
   running:
   ev3dev-lang.devices/find-led
 
   Returns a numeric value."
-  [config sensor]
-  (let [v (devices/read-attr config sensor :max_brightness)]
-    (when-not (empty? v)
-      (. Integer parseInt v))))
+  ([{:keys [config] :as sensor}]
+   {:pre [config]}
+   (max-brightness config sensor))
+  ([config sensor]
+   (let [v (devices/read-attr config sensor :max_brightness)]
+     (when-not (empty? v)
+       (. Integer parseInt v)))))
 
 (defn brightness
   "Gets or sets the brightness of the led.
@@ -28,8 +31,10 @@
        (. Integer parseInt v))))
   ([{:keys [config] :as sensor} intensity]
    {:pre [config]}
-   (devices/write-attr config sensor :brightness intensity))
+   (brightness config sensor intensity))
   ([config sensor intensity]
+   {:pre [(>= intensity 0)
+          (<= intensity (max-brightness sensor))]}
    (devices/write-attr config sensor :brightness intensity)))
 
 (defn find-mode
