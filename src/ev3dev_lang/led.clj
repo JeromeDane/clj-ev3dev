@@ -1,18 +1,6 @@
 (ns ev3dev-lang.led
   (:require [ev3dev-lang.devices :as devices]))
 
-(defn read-intensity
-  "Reads the current brigtness of the led.
-  Led passed has to be the result of
-  running:
-  ev3dev-lang.devices/find-led
-
-  Returns a numeric value."
-  [config sensor]
-  (let [v (devices/read-attr config sensor :brightness)]
-    (when-not (empty? v)
-      (. Integer parseInt v))))
-
 (defn max-intensity
   "Reads maximum brightness of the led.
   Led passed has to be the result of
@@ -25,16 +13,24 @@
     (when-not (empty? v)
       (. Integer parseInt v))))
 
-(defn set-intensity
-  "Sets the brightness of the led.
+(defn brightness
+  "Gets or sets the brightness of the led.
   Led passed has to be the result of
   running:
   ev3dev-lang.devices/find-led
 
   Intensity value should not exceed
   the maximum value for the led."
-  [config sensor intensity]
-  (devices/write-attr config sensor :brightness intensity))
+  ([{:keys [config] :as sensor}]
+   {:pre [config]}
+   (let [v (devices/read-attr config sensor :brightness)]
+     (when-not (empty? v)
+       (. Integer parseInt v))))
+  ([{:keys [config] :as sensor} intensity]
+   {:pre [config]}
+   (devices/write-attr config sensor :brightness intensity))
+  ([config sensor intensity]
+   (devices/write-attr config sensor :brightness intensity)))
 
 (defn find-mode
   "Finds selected mode, strips it off square
