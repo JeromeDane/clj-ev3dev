@@ -1,4 +1,4 @@
-(defproject ev3dev-lang-clj "0.1.0-SNAPSHOT"
+(defproject ev3dev-lang-clj "0.1.0"
   :description "Clojure wrapper around ev3dev API."
   :url "https://github.com/jeromedane/ev3dev-lang-clj"
   :license {:name "Eclipse Public License"
