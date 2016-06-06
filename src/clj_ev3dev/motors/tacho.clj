@@ -1,8 +1,8 @@
-(ns clj-ev3dev.motors.tacho
-  (:require [clj-ev3dev.devices :as devices]
+(ns ev3dev-lang.motors.tacho
+  (:require [ev3dev-lang.devices :as devices]
             [clojure.string     :as str]
             [clojure.java.shell :as shell]
-            [clj-ev3dev.ssh  :as ssh]))
+            [ev3dev-lang.ssh  :as ssh]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Helpers

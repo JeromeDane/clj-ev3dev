@@ -1,12 +1,9 @@
-# clj-ev3dev
+# ev3dev-lang-clj
 
 WIP: A Clojure wrapper around ev3dev API.
 
-Once the library is more stable it will drop `-SNAPSHOT`.
+This is a fork (derivative work really) of [annapawlicka](https://github.com/annapawlicka)'s excellent [clj-ev3dev](https://github.com/annapawlicka/clj-ev3dev) `clojure` wrapper for [ev3dev](http://ev3dev.org).
 
-```clojure
-[clj-ev3dev "0.1.0-SNAPSHOT"]
-```
 Generated doc can be found  [here](http://annapawlicka.com/clj-ev3dev/)
 
 ## Getting Started

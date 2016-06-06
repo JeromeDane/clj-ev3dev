@@ -1,10 +1,10 @@
 (ns clj-ev3dev-exampleapp.core
-  (:require [clj-ev3dev.led              :as led]
-            [clj-ev3dev.devices          :as devices]
-            [clj-ev3dev.motors.tacho     :as tacho]
-            [clj-ev3dev.sensors.color    :as color]
-            [clj-ev3dev.sensors.infrared :as infrared]
-            [clj-ev3dev.sensors.touch    :as touch])
+  (:require [ev3dev-lang.led              :as led]
+            [ev3dev-lang.devices          :as devices]
+            [ev3dev-lang.motors.tacho     :as tacho]
+            [ev3dev-lang.sensors.color    :as color]
+            [ev3dev-lang.sensors.infrared :as infrared]
+            [ev3dev-lang.sensors.touch    :as touch])
   (:gen-class :main true))
 
 (defn test-leds [config]

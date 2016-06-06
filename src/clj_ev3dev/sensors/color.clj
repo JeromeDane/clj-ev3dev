@@ -1,5 +1,5 @@
-(ns clj-ev3dev.sensors.color
-  (:require [clj-ev3dev.devices :as devices]))
+(ns ev3dev-lang.sensors.color
+  (:require [ev3dev-lang.devices :as devices]))
 
 (def ^{:private true} colors {0 :none
                               1 :black

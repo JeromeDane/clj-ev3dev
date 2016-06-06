@@ -1,7 +1,7 @@
-(ns clj-ev3dev.devices
+(ns ev3dev-lang.devices
   (:require [clojure.string  :as str]
             [clojure.java.io :as io]
-            [clj-ev3dev.ssh  :as ssh]))
+            [ev3dev-lang.ssh  :as ssh]))
 
 (def paths {:touch       "/sys/class/lego-sensor/"
             :color       "/sys/class/lego-sensor/"

@@ -1,5 +1,5 @@
-(ns clj-ev3dev.sensors.touch
-  (:require [clj-ev3dev.devices :as devices]))
+(ns ev3dev-lang.sensors.touch
+  (:require [ev3dev-lang.devices :as devices]))
 
 (defn pressed?
   "Returns true if the touch sensor is pressed.

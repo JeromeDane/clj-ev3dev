@@ -1,11 +1,11 @@
-(ns clj-ev3dev.led
-  (:require [clj-ev3dev.devices :as devices]))
+(ns ev3dev-lang.led
+  (:require [ev3dev-lang.devices :as devices]))
 
 (defn read-intensity
   "Reads the current brigtness of the led.
   Led passed has to be the result of
   running:
-  clj-ev3dev.devices/find-led
+  ev3dev-lang.devices/find-led
 
   Returns a numeric value."
   [config sensor]
@@ -17,7 +17,7 @@
   "Reads maximum brightness of the led.
   Led passed has to be the result of
   running:
-  clj-ev3dev.devices/find-led
+  ev3dev-lang.devices/find-led
 
   Returns a numeric value."
   [config sensor]
@@ -29,7 +29,7 @@
   "Sets the brightness of the led.
   Led passed has to be the result of
   running:
-  clj-ev3dev.devices/find-led
+  ev3dev-lang.devices/find-led
 
   Intensity value should not exceed
   the maximum value for the led."

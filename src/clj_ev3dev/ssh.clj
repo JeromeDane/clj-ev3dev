@@ -1,4 +1,4 @@
-(ns clj-ev3dev.ssh
+(ns ev3dev-lang.ssh
   (:require [clj-ssh.ssh :as ssh]))
 
 (defn create-session

@@ -1,5 +1,5 @@
-(ns clj-ev3dev.sensors.infrared
-  (:require [clj-ev3dev.devices :as devices]))
+(ns ev3dev-lang.sensors.infrared
+  (:require [ev3dev-lang.devices :as devices]))
 
 (defn read-proximity
   "Reads the proximity value (in range 0 - 100)
