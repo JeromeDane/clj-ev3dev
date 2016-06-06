@@ -3,57 +3,39 @@
 
 (defn max-brightness
   "Reads maximum brightness of the led.
-  Led passed has to be the result of
-  running:
-  ev3dev-lang.devices/find-led
+  led must be the result of running: ev3dev-lang.devices/find-led
 
   Returns a numeric value."
-  ([{:keys [config] :as sensor}]
+  ([{:keys [config] :as led}]
    {:pre [config]}
-   (max-brightness config sensor))
-  ([config sensor]
-   (let [v (devices/read-attr config sensor :max_brightness)]
+   (max-brightness config led))
+  ([config led]
+   (let [v (devices/read-attr config led :max_brightness)]
      (when-not (empty? v)
        (. Integer parseInt v)))))
 
 (defn brightness
   "Gets or sets the brightness of the led.
-  Led passed has to be the result of
-  running:
-  ev3dev-lang.devices/find-led
-
-  Intensity value should not exceed
-  the maximum value for the led."
-  ([{:keys [config] :as sensor}]
+  Returns the current brightness of the supplied led if called without
+  intensity argument, or sets the led-sensor's brightness to the intensity
+  supplied.
+  led must be the result of running: ev3dev-lang.devices/find-led
+  intensity value should not exceed the maximum value for the led."
+  ([{:keys [config] :as led}]
    {:pre [config]}
-   (let [v (devices/read-attr config sensor :brightness)]
+   (let [v (devices/read-attr config led :brightness)]
      (when-not (empty? v)
        (. Integer parseInt v))))
-  ([{:keys [config] :as sensor} intensity]
+  ([{:keys [config] :as led} intensity]
    {:pre [config]}
-   (brightness config sensor intensity))
-  ([config sensor intensity]
-   {:pre [(>= intensity 0)
-          (<= intensity (max-brightness sensor))]}
-   (devices/write-attr config sensor :brightness intensity)))
+   (devices/write-attr config led :brightness intensity)))
 
-(defn find-mode
-  "Finds selected mode, strips it off square
-  brackets and keywordises it."
-  [trigger-str]
-  (-> (re-find #"\[\S+\]" trigger-str)
-      (clojure.string/replace #"\[" "")
-      (clojure.string/replace #"\]" "")
-      keyword))
+(defn trigger
+  "Get or set the current mode. Returns a keyword of the current mode if no new
+  mode is suplied or sets the current mode to the mode keyword if given.
+  led must be the result of running: ev3dev-lang.devices/find-led
 
-(defn read-trigger
-  "Returns a keyword representation of the set trigger."
-  [config sensor]
-  (let [trigger-str (devices/read-attr config sensor :trigger)]
-    (find-mode trigger-str)))
-
-(defn set-trigger
-  "Triggers can make the LED do interesting things.
+  Triggers can make the LED do interesting things.
 
   Available modes:
 
@@ -74,7 +56,11 @@
   a way of telling the EV3 about their state, so it is assumed that the
   batteries are always discharging. Therefore these triggers will
   always turn the LED off."
-  [config sensor mode]
-  (if (contains? #{:none :mmc0 :timer :heartbeat :default-on :rfkill0} mode)
-    (devices/write-attr config sensor :trigger (name mode))
-    (throw (Exception. "Trigger must be one of the supported modes: :none, :mmc0, :timer, :heartbeat :default-on, :rfkill0."))))
+  ([{:keys [config] :as led}]
+   (-> (re-find #"\[\S+\]" (devices/read-attr config led :trigger))
+       (clojure.string/replace #"\[" "")
+       (clojure.string/replace #"\]" "")
+       keyword))
+  ([{:keys [config] :as led} mode]
+   {:pre (contains? {:none :mmc0 :timer :heartbeat :default-on :rfkill0} mode)}
+   (devices/write-attr config led :trigger (name mode))))
