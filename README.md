@@ -2,13 +2,13 @@
 
 WIP: A Clojure wrapper around ev3dev API.
 
-This is a fork (derivative work really) of [annapawlicka](https://github.com/annapawlicka)'s excellent [clj-ev3dev](https://github.com/annapawlicka/clj-ev3dev) `clojure` wrapper for [ev3dev](http://ev3dev.org).
+This is a fork of [annapawlicka](https://github.com/annapawlicka)'s [clj-ev3dev](https://github.com/annapawlicka/clj-ev3dev) `clojure` wrapper for [ev3dev](http://ev3dev.org).
 
 ```
 [ev3dev-lang "0.1.3-SNAPSHOT"]
 ```
 
-Generated doc can be found  [here](http://annapawlicka.com/clj-ev3dev/)
+**[Generated API documention can be found  here](http://jeromedane.com/ev3dev-lang-clj/docs/)**
 
 ## Getting Started
 
