@@ -2,7 +2,7 @@
 
 WIP: A Clojure wrapper around ev3dev API.
 
-This is a fork of [annapawlicka](https://github.com/annapawlicka)'s [clj-ev3dev](https://github.com/annapawlicka/clj-ev3dev) `clojure` wrapper for [ev3dev](http://ev3dev.org).
+This is a fork of [annapawlicka](https://github.com/annapawlicka)'s [clj-ev3dev](https://github.com/annapawlicka/clj-ev3dev) `clojure` wrapper for [ev3dev](http://ev3dev.org). It is an attempt to bring the project up to the latest [ev3dev-lang API specifications](http://ev3dev-lang.readthedocs.io/en/latest/spec.html).
 
 ```
 [ev3dev-lang "0.1.3-SNAPSHOT"]
@@ -46,7 +46,9 @@ ev3's specs. The startup time takes a few minutes, and if you're
 going to do any memory heavy operations you're very
 likely going to see `java.lang.OutOfMemoryError: Java heap space`.
 
-## Usage
+## Usage - OUTDATED
+
+The following information is a bit out of date and needs to be updated for the new [ev3dev-lang API specifications](http://ev3dev-lang.readthedocs.io/en/latest/spec.html) that have been implemented in this fork. See [generated docs](http://jeromedane.com/ev3dev-lang-clj/docs/) for current specs.
 
 ### Running on the robot itself (local)
 
