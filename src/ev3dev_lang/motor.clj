@@ -1,147 +1,166 @@
-(ns ev3dev-lang.motors.tacho
+(ns ev3dev-lang.motor
   (:require [ev3dev-lang.devices :as devices]
             [clojure.string     :as str]
             [clojure.java.shell :as shell]
+            [clojure.string :as string]
             [ev3dev-lang.ssh  :as ssh]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Helpers
 
-(def root-motor-path "/sys/class/tacho-motor/")
+(def #^{:private true} root-path "/sys/class/tacho-motor/")
 
-(defn keyword->attr
+(defn- keyword->attr
   "Converts keyword to a file name."
   [k]
-  (-> k
-      name
-      (str/replace #"-" "_")))
+  (-> k name (str/replace #"-" "_")))
 
 (defn- str->num [s]
   (when-not (empty? s)
     (. Integer parseInt s)))
 
-(defmulti send-command (fn [config _ _] (:env config)))
+(defmulti #^{:private true} send-command (fn [config _ _] (:env config)))
 
-(defmethod send-command :remote [config motor value]
+(defmethod #^{:private true} send-command :remote [config id value]
   (let [cmd (str "echo " (name value) " > "
-                 root-motor-path
-                 motor "/command")]
+                 root-path
+                 id "/command")]
     (ssh/execute (:session config) cmd)))
 
-(defmethod send-command :local [config motor value]
-  (spit (str root-motor-path "/"
-             motor "/command") (name value)))
+(defmethod #^{:private true} send-command :local [config id value]
+  (spit (str root-path "/"
+             id "/command") (name value)))
 
-(defmulti  write-attr (fn [config _ _ _] (:env config)))
+(defmulti #^{:private true} write-attr (fn [config _ _ _] (:env config)))
 
-(defmethod write-attr :remote [config motor k value]
-  (let [cmd (str "echo " value " > " root-motor-path
-                 motor "/" (keyword->attr k))]
+(defmethod #^{:private true} write-attr :remote [config id k value]
+  (let [cmd (str "echo " value " > " root-path
+                 id "/" (keyword->attr k))]
+    (println "executing " cmd)
     (ssh/execute (:session config) cmd)))
 
-(defmethod write-attr :local [config motor k value]
-  (spit (str root-motor-path motor "/" (keyword->attr k)) value))
+(defmethod #^{:private true} write-attr :local [config id k value]
+  (spit (str root-path id "/" (keyword->attr k)) value))
 
-(defmulti read-attr (fn [config _ _] (:env config)))
+(defmulti #^{:private true} read-attr (fn [config _ _] (:env config)))
 
-(defmethod read-attr :remote [config motor k]
-  (let [cmd (str "cat " root-motor-path "/"
-                 motor "/" (keyword->attr k))]
+(defmethod #^{:private true}read-attr :remote [config id k]
+  (let [cmd (str "cat " root-path "/"
+                 id "/" (keyword->attr k))]
     (ssh/execute (:session config) cmd)))
 
-(defmethod read-attr :local [_ motor k]
-  (let [path (str root-motor-path motor "/" (keyword->attr k))]
+(defmethod #^{:private true} read-attr :local [_ id k]
+  (let [path (str root-path id "/" (keyword->attr k))]
     (str/trim-newline (slurp path))))
 
 (defn- locate-in-port
   "Searches through motors directory and either returns
   a matching device's node name or returns nil."
   [config out-port files]
-  {:post [(or (not (empty? %))
-              (throw (Exception. (format "Could not locate motor in port %s" out-port))))]}
-  (first (keep #(let [port (read-attr config % :port-name)]
+  (first (keep #(let [port (read-attr config % :address)]
                   (when (= port out-port)
                     %)) files)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Commands
 
+(defn address
+  "Get the port the motor is plugged into"
+  [{:keys [config id]}]
+  (read-attr config id :address))
+
 (defn reset
   "Reset all of the parameters back to the default values and stop the motor.
 
   It's a good idea to send this command at the start of a program to ensure the motor
   is in a known state without having to write each of the parameters individually."
-  [config motor]
-  (send-command config motor :reset))
+  [{:keys [config id]}]
+  (send-command config id :reset))
 
-(defn current-position
-  "Reads the current position of the motor.
-  Returns numerical value."
-  [config motor]
-  (str->num (read-attr config motor :position)))
+(defn position
+  "Gets or the current position of the motor."
+  ([{:keys [config id]}]
+   (str->num (read-attr config id :position))))
 
-(defn reset-position
-  "Resets the position of the motor to 0.
-
-  NOTE: You will get an error if you do this while the motor is running."
-  [config motor]
-  (write-attr config motor :position 0))
-
-(defn initialise-position
-  "Set the position of the motor."
-  [config motor position]
-  (write-attr config motor :position position))
-
+(defn position-sp
+  "Gets or sets the target \"set point\" position of the motor."
+  ([{:keys [config id]}]
+   (str->num (read-attr config id :position-sp)))
+  ([{:keys [config id]} position-value]
+   (write-attr config id :position-sp position-value)))
 
 ;;;;;; Locating motor ;;;;;;;;
 
-(defmulti find-tacho-motor
-  "Finds tacho motor that is plugged into given port. Ports are: :a, :b, :c, :d."
-  (fn [config _] (:env config)))
+(defn find-motor
+  "Finds a motor that is plugged into given port. Available ports are:
+  :a, :b, :c, :d. Returns a map defining the motor if found
+  on the given port, or nil if no motor was found on the given port."
+  [{:keys [env] :as config} port]
+  (let [motors (case env
+                 :remote (str/split-lines (ssh/execute (:session config) (str "ls " root-path)))
+                 :local (str/split-lines (:out (clojure.java.shell/sh "ls" root-path))))]
+    (when (> (count motors) 0)
+      (when-let [id (locate-in-port config (get devices/ports port) motors)]
+        {:id id
+         :config config}))))
 
-(defmethod find-tacho-motor :remote [config port]
-  (let [motors (str/split-lines (ssh/execute (:session config) (str "ls " root-motor-path)))]
-    (if-not (> (count motors) 0)
-      (throw (Exception. "There are no tacho motors connected."))
-      (locate-in-port config (get devices/ports port) motors))))
+(defn driver-name
+  "Get the driver name of the motor"
+  [{:keys [config id]}]
+  (read-attr config id :driver-name))
 
-(defmethod find-tacho-motor :local [config port]
-  (let [motors (str/split-lines (:out (clojure.java.shell/sh "ls" root-motor-path)))]
-    (locate-in-port config (get devices/ports port) motors)))
+(defn duty-cycle
+  "Get the current duty cycle value of a motor. Returns a numerical value.
 
-(defn write-duty-cycle
-  "Sets the duty cycle. Duty cycle should be a numerical
-  value.
-
-  The duty cycle is useful when you just want to turn
+  The duty cycle is used with speed-regulation \":off\"
+  and is useful when you just want to turn
   the motor on and are not too concerned with how stable
-  the speed is.
-  The duty cycle attribute accepts values from -100 to +100.
+  the speed is. The duty cycle attribute accepts values from -100 to +100.
   The sign of the attribute determines the direction of the motor.
   You can update the duty cycle while the motor is running."
-  [config motor value]
-  (if (or (> value 100) (< value -100))
-    (throw (Exception. "The speed must be in range [-100, 100]."))
-    (write-attr config motor :duty-cycle-sp value)))
+  [{:keys [config id]}]
+  (str->num (read-attr config id :duty-cycle)))
 
-(defn read-duty-cycle
-  "Reads the duty cycle value. Returns a numerical value."
-  [config motor]
-  (str->num (read-attr config motor :duty-cycle)))
+(defn duty-cycle-sp
+  "Get or set the target duty cycle \"set point\" value. Returns a numerical value.
 
-(defn set-speed
-  "Sets the speed value of a motor, in tacho counts per second.
-  It's used with regulation mode on."
-  [config motor speed]
-  (write-attr config motor :speed-sp speed))
+  See `duty-cycle` function for further details."
+  ([{:keys [config id]}]
+   (str->num (read-attr config id :duty-cycle-sp)))
+  ([{:keys [config id]} value]
+   {:pre [(>= value 0) (<= value 100)]}
+   (write-attr config id :duty-cycle-sp value)))
 
-(defn read-speed
-  "Reads the speed value. Returns a numerical value."
-  [config motor]
-  (str->num (read-attr config motor :speed-sp)))
+(defn polarity
+  "Changes the forward direction of a motor.
 
-(defn set-regulation-mode
-  "Toggle regulation mode of the motor to :off or :on.
+     This is useful, for example, when you have two motors used as drive
+     wheels. By changing the polarity of one of the two motors, you can
+     send a positive value to both motors to drive forwards.
+
+     Polarity can be set to :normal or :inversed. The default is :normal."
+  ([{:keys [config id]}]
+   (keyword (read-attr config id :polarity)))
+  ([{:keys [config id]} polarity-value]
+   {:pre [(some #{polarity-value} [:normal :inversed])]}
+   (println "setting polarity to " polarity-value)
+   (write-attr config id :polarity (name polarity-value))))
+
+(defn speed
+  "Read the current speed of the motor when speed-regulation \":on\"."
+  [{:keys [config id]}]
+  (str->num (read-attr config id :speed)))
+
+(defn speed-sp
+  "Get or set the target \"set point\" speed of a motor, in tacho counts per
+  second used with speed-regulation \":on\"."
+  ([{:keys [config id]}]
+   (str->num (read-attr config id :speed-sp)))
+  ([{:keys [config id]} speed]
+   (write-attr config id :speed-sp speed)))
+
+(defn speed-regulation
+  "Toggle speed-regulation of the motor to :off or :on.
   Default mode is :off.
 
   :off mode
@@ -161,40 +180,29 @@
   driver attempts to keep the motor speed at the value you've
   specified.
   You can change the speed by calling set-speed function, e.g.
-  (set-speed config motor 275)
+  (set-speed config id 275)
 
   If you slow down the motor with a load, the motor driver tries
   to compensate by sending more power to the motor to get it to
   speed up. If you speed up the motor for some reason, the motor
   driver will try to compensate by sending less power to the motor."
-  [config motor mode]
-  {:pre [(or (= mode :on) (= mode :off))]}
-  (write-attr config motor :speed-regulation (name mode)))
+  ([{:keys [config id]} mode]
+   {:pre [(or (= mode :on) (= mode :off))]}
+   (write-attr config id :speed-regulation (name mode)))
+  ([{:keys [config id]}]
+   (keyword (read-attr config id :speed-regulation))))
 
-(defn read-regulation-mode
-  "Reads the regulation mode of the motor."
-  [config motor]
-  (read-attr config motor :speed-regulation))
+(defn state
+  "Reading returns a vector of state flags. Possible flags are :running,
+  :ramping, :holding, :overloaded and :stalled."
+  [{:keys [config id]}]
+  (into []
+    (map keyword
+      (filter #(not (empty? %))
+        (string/split (read-attr config id :state) #" ")))))
 
-(defn set-polarity
-  "Changes the forward direction of a motor.
-
-  This is useful, for example, when you have two motors used as drive
-  wheels. By changing the polarity of one of the two motors, you can
-  send a positive value to both motors to drive forwards.
-
-  Polarity can be set to :normal or :inversed. The default is :normal."
-  [config motor polarity]
-  {:pre [(some #{polarity} [:normal :inversed])]}
-  (write-attr config motor :polarity polarity))
-
-(defn read-polarity
-  "Returns the current polarity setting."
-  [config motor]
-  (read-attr config motor :polarity))
-
-(defn set-stop-behaviour
-  "Sets a stop behavior of a motor. Allowed behaviours are:
+(defn stop-action
+  "Get or set the current stop behavior of a motor. Allowed behaviours are:
   :brake, :coast and :hold.
 
   :coast - the power will be removed from the motor and it will coast to a stop
@@ -207,110 +215,113 @@
            from being turned any further. It's intended for use with run-to-*-pos
            commands. It will work with other run commands, but may result in unexpected
            behaviour."
-  [config motor behavior]
-  {:pre [(some #{behavior} [:brake :coast :hold])]}
+  ([{:keys [config id]}]
+   (keyword (read-attr config id :stop-command)))
+  ([{:keys [config id]} behavior]
+   {:pre [(some #{behavior} [:brake :coast :hold])]}
+   (write-attr config id :stop-command (name behavior))))
 
-  (write-attr config motor :stop-command behavior))
+(defn time-sp
+  "Get or set the target \"set point\" time in milliseconds to use with run-timed."
+  ([{:keys [config id]}]
+   (str->num (read-attr config id :time-sp)))
+  ([{:keys [config id]} speed]
+   (write-attr config id :time-sp speed)))
 
 ;;;;;;;;;;;;; Run ;;;;;;;;;;;;;
-
-(defmulti run-motor
-  "Sets the speed of the motor and runs it.
-  Depending on the regulation mode it will either set
-  pulses per second (enabled) or duty cycle (disabled).
-
-  It throws exception if speed is outside of a valid range."
-  (fn [config motor speed regulation-mode] regulation-mode))
-
-(defmethod run-motor :on [config motor speed _]
-  (if (and (> speed 2000) (< speed -2000))
-    (throw (Exception. "The speed in regulation mode must be in range [-2000, 2000]."))
-    (do
-      (set-speed config motor speed)
-      (send-command config motor :run-forever))))
-
-(defmethod run-motor :off [config motor speed _]
-  (if (and (> speed 100) (< speed -100))
-    (throw (Exception. "The speed must be in range [-100, 100]"))
-    (do
-      (write-duty-cycle config motor speed)
-      (send-command config motor :run-forever))))
 
 (defn run-forever
   "Runs the motor at the given port.
   The meaning of `speed` parameter depends on whether the
-  regulation mode is turned on or off.
+  speed-regulation is turned on or off.
 
-  When the regulation mode is off (by default) `speed` ranges
+  When speed-regulation is off (by default) `speed` ranges
   from -100 to 100 and it's absolute value indicates the percent
   of motor's power usage. It can be roughly interpreted as a motor
   speed, but deepending on the environment, the actual speed of the
   motor may be lower than the target speed.
 
-  When the regulation mode is on (has to be enabled by enable-regulation-mode
-  function) the motor driver attempts to keep the motor speed at the `speed`
+  When speed-regulation is on, which must first be enabled by calling
+  `(speed-regulation my-motor :on)`, the motor driver attempts to keep the motor speed at the `speed`
   value you've specified which ranges from -2000 to 2000.
 
-  Negative values indicate reverse motion regardless of the regulation mode."
-  ([config motor]
-   (send-command config motor :run-forever))
-  ([config motor speed]
-   (let [speed-regulation (keyword (read-attr config motor :speed-regulation))]
-     (run-motor config motor speed speed-regulation))))
+  Negative values indicate reverse motion regardless of speed-regulation."
+  ([{:keys [config id]}]
+   {:pre [config]}
+   (send-command config id :run-forever))
+  ([{:keys [config id] :as motor} speed-value]
+   {:pre [(integer? speed-value)]}
+   (case (speed-regulation motor)
+     :on (speed-sp motor speed-value)
+     :off (duty-cycle-sp motor speed-value))
+   (send-command config id :run-forever)))
+
+(defn run-to-abs-pos
+  "Run to an absolute position and then stop using the action specified
+  by stop-action."
+  ([{:keys [config id]}]
+   (send-command config id :run-to-abs-pos))
+  ([{:keys [config id] :as motor} position-value]
+   (position-sp motor position-value)
+   (run-to-abs-pos motor)))
 
 (defn run-to-rel-pos
-  "Runs the motor to relative position. Position is specified by :position-write
-  but te value is added to the current position.
+  "Runs the motor to relative position specified by position-sp or a supplied
+  numeric value as a second argument.
 
   This function can be invoked either without specifying position and using the
   current value, or with a position passed in, e.g.
-  (run-to-rel-pos config motor)
-  (run-to-rel-pos config motor 180)
+  (run-to-rel-pos my-motor)
+  (run-to-rel-pos my-motor 180)
 
   NOTE: Using a negative value for a position will cause the motor to rotate in
   the opposite direction."
-  ([config motor]
-   (send-command config motor :run-to-rel-pos))
-  ([config motor position]
-   (write-attr config motor :position-write position)
-   (send-command config motor :run-to-rel-pos)))
+  ([{:keys [config id]}]
+   (send-command config id :run-to-rel-pos))
+  ([{:keys [config id] :as motor} position]
+   (write-attr config id :position-sp position)
+   (run-to-rel-pos motor)))
 
 (defn run-timed
   "Runs a motor for a specified time asynchronously.
   It starts the motor using :run-forever command and sets a timer in the kernel
   to run the :stop command after the specified time. The time is in milliseconds,
-  and is written to :time-sp attribute."
-  ([config motor]
-   (send-command config motor :run-timed))
-  ([config motor time]
-   (write-attr config motor :time-sp time)
-   (send-command config motor :run-timed)))
+  and is written with `time-sp`"
+  ([{:keys [config id]}]
+   (send-command config id :run-timed))
+  ([{:keys [config id] :as motor} time]
+   (time-sp motor time)
+   (run-timed motor)))
 
 (defn run-direct
-  "Runs a motor just like :run-forever, but changes to :duty-cycle take effect
-  immediately instead of having to send a new command. To update the :duty-cycle
-  run this command:
-  (write-duty-cycle config motor 20)
+  "Runs a motor just like :run-forever, but immediately changes `speed-regulation`
+  to :off and causes changes to `duty-cycle-sp` to take effect immediately
+  instead of having to send a new run command. To update the duty-cycle
+  run command: (duty-cycle-sp my-motor my-speed)
 
   This is useful for implementing your own PID or something similar that needs to
   update the motor output very quickly."
-  [config motor]
-  (send-command config motor :run-direct))
+  ([{:keys [config id] :as motor}]
+   (speed-regulation motor :off)
+   (send-command config id :run-direct))
+  ([{:keys [config id] :as motor} speed-value]
+   (duty-cycle-sp motor speed-value)
+   (run-direct motor)))
 
 (defn stop
   "Stops the motor:
-  (stop config motor)
+  (stop config id)
 
   The recommended way of stopping is to set the behaviout beforehand, e.g.
-  (set-stop-behavior config motor :coast)
+  (set-stop-behavior config id :coast)
   There are three possible behaviours when the motor stops:
   :coast, :brake and :hold, described in more detail in set-stop-behavior
   docstring.
 
   We can also pass in required behavior to stop function:
-  (stop config motor :coast)"
-  ([config motor]
-   (send-command config motor :stop))
-  ([config motor behavior]
-   (set-stop-behaviour config motor behavior)
-   (send-command config motor :stop)))
+  (stop config id :coast)"
+  ([{:keys [config id]}]
+   (send-command config id :stop))
+  ([{:keys [config id] :as motor} behavior]
+   (stop-action motor behavior)
+   (send-command config id :stop)))
