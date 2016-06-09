@@ -5,7 +5,9 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
 
   :signing {:gpg-key "jerome.dane@gmail.com"}
-  :deploy-repositories [["clojars" {:creds :gpg}]]
+  :deploy-repositories [["clojars" {:creds :gpg}]
+                        ["releases" :clojars]
+                        ["snapshots" :clojars]]
 
   :jar-name "ev3dev-lang-clj-%s.jar"
 
